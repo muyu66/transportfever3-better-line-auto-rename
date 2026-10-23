@@ -4,7 +4,7 @@
 
 本项目为《Transport Fever 3》增加：
 
-- 一个新的线路自动重命名方案；
+- 两个线路自动重命名方案；
 - 车站终点站列表的名称排序与当前车站名称高亮。
 
 Mod ID 与 Mod 根目录名固定为：
@@ -24,7 +24,12 @@ better_line_auto_rename/
 ├── _metadata/
 │   └── modinfo.json
 └── content/
+    ├── scheme_component_firsttown.res.lua
+    ├── scheme_component_firsttown.script.tl
+    ├── scheme_component_lasttown.res.lua
+    ├── scheme_component_lasttown.script.tl
     ├── scheme_cargo_firststop_laststop.res.lua
+    ├── scheme_firsttown_lasttown_intercity.res.lua
     ├── station_group_enhanced.res.lua
     ├── station_group_enhanced.script.tl
     └── station_group_enhanced.tl
@@ -52,6 +57,33 @@ api.res.genericRep.getAllOfType("rename_scheme")
 
 ### 3.2 本项目的实现
 
+自动重命名组件的输入参数只有两个：
+
+```lua
+renameParams.lineEntity
+renameParams.reactLine
+```
+
+`reactLine.path` 包含按顺序排列的车站和途经点。每个非途经点通过
+`via.stop.stationGroup` 指向车站组，`via.stop.station1` 是所选车站在组内的
+1-based 下标。城市实体可用以下链路取得：
+
+```lua
+stationGroup.stations[via.stop.station1]
+    -> api.engine.system.stationSystem.getTown(station)
+    -> api.engine.util.getEntityName(town)
+```
+
+游戏本体已有的组件如下：
+
+| 组件        | 输出                                             |
+| ----------- | ------------------------------------------------ |
+| `firststop` | 第一个非途经点车站的站名                         |
+| `laststop`  | 最后一个非途经点车站的站名                       |
+| `town`      | 线路上出现次数最多的城市名，不是首站/末站城市    |
+| `cargo`     | 停靠站数最多的最多 3 种货物，超过时附加 `+N`     |
+| `carrier`   | 线路车辆与车站共同使用的承运方式                 |
+
 `scheme_cargo_firststop_laststop.res.lua` 复用游戏自带的：
 
 - `cargo`
@@ -65,6 +97,20 @@ api.res.genericRep.getAllOfType("rename_scheme")
 ```
 
 资源名固定为 `cargo_firststop_laststop`，`sortKey` 必须大于原版三个方案，当前为 `23`。
+
+第二个方案由独立的 `scheme_firsttown_lasttown_intercity.res.lua` 定义，
+并使用本 Mod 新增的 `firsttown`、`lasttown` 组件：
+
+```text
+{firsttown} - {lasttown} - 城际
+```
+
+两个端点组件按 `reactLine.path` 的顺序查找第一个和最后一个非途经点，
+再通过该停靠点实际选择的 `station1` 找到所属城市。`sortKey` 为 `24`。
+
+一个 `.res.lua` 的 `data()` 只能返回一个资源，因此不能把两个
+`rename_scheme` 放进同一个文件；它们必须各有一个资源文件。组件脚本则可以
+独立引用，因此会自动加入 `rename_scheme_component` 资源列表。
 
 ## 4. 功能二与三：车站窗口增强
 

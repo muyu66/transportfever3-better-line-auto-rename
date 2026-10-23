@@ -1,7 +1,12 @@
 {
     "archives": null,
     "files": [
+        "scheme_component_firsttown.res.lua",
+        "scheme_component_firsttown.script.tl",
+        "scheme_component_lasttown.res.lua",
+        "scheme_component_lasttown.script.tl",
         "scheme_cargo_firststop_laststop.res.lua",
+        "scheme_firsttown_lasttown_intercity.res.lua",
         "station_group_enhanced.res.lua",
         "station_group_enhanced.script.tl",
         "station_group_enhanced.tl"

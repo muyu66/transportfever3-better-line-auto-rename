@@ -22,6 +22,7 @@ import argparse
 import gettext
 import json
 import os
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -44,16 +45,61 @@ STATION_GROUP_RES = (
 STATION_GROUP_TL = (
     MOD_DIR / "content" / "station_group_enhanced.tl"
 )
+MOD_SCHEME_PATHS = (
+    MOD_DIR / "content" / "scheme_cargo_firststop_laststop.res.lua",
+    MOD_DIR / "content" / "scheme_firsttown_lasttown_intercity.res.lua",
+)
+MOD_COMPONENT_PATHS = (
+    MOD_DIR / "content" / "scheme_component_firsttown.res.lua",
+    MOD_DIR / "content" / "scheme_component_firsttown.script.tl",
+    MOD_DIR / "content" / "scheme_component_lasttown.res.lua",
+    MOD_DIR / "content" / "scheme_component_lasttown.script.tl",
+)
 
 DEFAULT_GAME_DIR = Path(r"C:\Game\Steam\steamapps\common\Transport Fever 3")
 GUI_ZIP = Path("base/content/gui.zip")
 STRINGS_DIR = Path("base/strings")
 
-# 本 mod 期望的最终显示名（游戏内语言 -> 文本）
-EXPECTED_NAMES = {
-    "en": "Cargo - First Stop - Last Stop",
-    "zh_CN": "货物 - 首个停靠点 - 末个停靠点",
-    "zh_TW": "貨物 - 首站 - 末站",
+# 本 mod 期望的最终显示名和命名结果。
+EXPECTED_SCHEMES = {
+    "cargo_firststop_laststop": {
+        "names": {
+            "en": "Cargo - First Stop - Last Stop",
+            "zh_CN": "货物 - 首个停靠点 - 末个停靠点",
+            "zh_TW": "貨物 - 首站 - 末站",
+        },
+        "formatString": "{key1} - {key2} - {key3}",
+        "formatParams": {
+            "key1": "cargo",
+            "key2": "firststop",
+            "key3": "laststop",
+        },
+        "renderValues": {
+            "key1": "CARGO",
+            "key2": "FIRST",
+            "key3": "LAST",
+        },
+        "rendered": "CARGO - FIRST - LAST",
+        "sortKey": 23,
+    },
+    "firsttown_lasttown_intercity": {
+        "names": {
+            "en": "首站城市 - 末站城市 - 城际",
+            "zh_CN": "首站城市 - 末站城市 - 城际",
+            "zh_TW": "首站城市 - 末站城市 - 城际",
+        },
+        "formatString": "{key1} - {key2} - 城际",
+        "formatParams": {
+            "key1": "firsttown",
+            "key2": "lasttown",
+        },
+        "renderValues": {
+            "key1": "FIRST",
+            "key2": "LAST",
+        },
+        "rendered": "FIRST - LAST - 城际",
+        "sortKey": 24,
+    },
 }
 
 errors: list[str] = []
@@ -102,12 +148,16 @@ def check_files() -> None:
         unlisted = sorted(on_disk - listed)
         check(not missing, f"_content.json 列了不存在的文件：{missing}")
         check(not unlisted, f"content 下有文件没进 _content.json：{unlisted}")
-        for path in (
+        required_files = {
+            path.name
+            for path in MOD_SCHEME_PATHS + MOD_COMPONENT_PATHS
+        } | {
             "station_group_enhanced.script.tl",
             "station_group_enhanced.res.lua",
             "station_group_enhanced.tl",
-        ):
-            check(path in listed, f"车站窗口增强文件未加入 _content.json：{path}")
+        }
+        for path in sorted(required_files):
+            check(path in listed, f"关键文件未加入 _content.json：{path}")
         print(f"   内容文件 {len(on_disk)} 个，清单一致")
 
     if modinfo is not None:
@@ -265,76 +315,155 @@ def check_semantics(game_dir: Path) -> None:
     check(len(base_schemes) == 3, f"本体方案应为 3 个，实际 {len(base_schemes)}")
     check(len(base_components) == 5, f"本体组件应为 5 个，实际 {len(base_components)}")
 
-    mod_res_path = (
-        MOD_DIR / "content" / "scheme_cargo_firststop_laststop.res.lua"
-    )
-    check(mod_res_path.is_file(), f"缺少方案文件：{mod_res_path}")
-    if not mod_res_path.is_file():
+    missing = [str(path) for path in MOD_SCHEME_PATHS + MOD_COMPONENT_PATHS
+               if not path.is_file()]
+    check(not missing, f"缺少自动重命名文件：{missing}")
+    if missing:
         return
 
-    for lang, expected in EXPECTED_NAMES.items():
-        tr = {}
-        try:
-            gt = gettext.translation(
-                "base", localedir=str(game_dir / STRINGS_DIR), languages=[lang]
-            )
-            tr = {k: gt.gettext(k) for k in
-                  ("Cargo", "First Stop", "Last Stop")}
-        except FileNotFoundError:
-            pass
+    mod_components = {}
+    for path in MOD_COMPONENT_PATHS:
+        if path.suffix != ".lua":
+            continue
+        res, err = eval_res(lua, path.read_text(encoding="utf-8"), path.name, {})
+        check(err is None, f"{path.name}: {err}")
+        if res is None:
+            continue
+        check(res["type"] == "rename_scheme_component",
+              f"{path.name} 的 type 应为 rename_scheme_component")
+        data = res["data"]
+        raw_name = data["schemeComponentNameRaw"]
+        check(raw_name not in base_components,
+              f"组件名与本体冲突：{raw_name}")
+        check(raw_name not in mod_components,
+              f"Mod 组件名重复：{raw_name}")
+        mod_components[raw_name] = data
+        referenced_script = data["renameFnDefinition"]["fileName"].split("@", 1)[0]
+        script_path = path.parent / referenced_script
+        check(script_path.is_file() or (path.parent / f"{referenced_script}.tl").is_file(),
+              f"{path.name} 引用了不存在的脚本：{referenced_script}")
 
-        res, err = eval_res(lua, mod_res_path.read_text(encoding="utf-8"),
-                            mod_res_path.name, tr)
-        check(err is None, f"{mod_res_path.name}（{lang}）: {err}")
+    check(set(mod_components) == {"firsttown", "lasttown"},
+          f"Mod 端点城市组件应为 firsttown/lasttown，实际 {sorted(mod_components)}")
+
+    first_script = MOD_DIR / "content" / "scheme_component_firsttown.script.tl"
+    last_script = MOD_DIR / "content" / "scheme_component_lasttown.script.tl"
+    first_source = first_script.read_text(encoding="utf-8")
+    last_source = last_script.read_text(encoding="utf-8")
+    endpoint_snippets = {
+        first_script: (
+            "via.stop.stationGroup",
+            "stationGroup.stations[stationIndex1]",
+            "stationSystem.getTown(stationEntity)",
+            "getEntityName(townEntity)",
+        ),
+        last_script: (
+            "via.stop.stationGroup",
+            "stationGroup.stations[stationIndex1]",
+            "stationSystem.getTown(stationEntity)",
+            "lastTownName = townName",
+        ),
+    }
+    for path, snippets in endpoint_snippets.items():
+        source = path.read_text(encoding="utf-8")
+        for snippet in snippets:
+            check(snippet in source,
+                  f"{path.name} 缺少端点城市关键代码：{snippet}")
+
+    all_components = set(base_components) | set(mod_components)
+    max_base_key = max(s["sortKey"] for s in base_schemes.values())
+    mod_schemes = {}
+
+    for path in MOD_SCHEME_PATHS:
+        res, err = eval_res(lua, path.read_text(encoding="utf-8"), path.name, {})
+        check(err is None, f"{path.name}: {err}")
         if res is None:
             continue
 
         check(res["type"] == "rename_scheme",
-              f"type 应为 rename_scheme，实际 {res['type']!r}")
+              f"{path.name} 的 type 应为 rename_scheme")
         data = res["data"]
+        raw_name = data["schemeNameRaw"]
+        check(raw_name in EXPECTED_SCHEMES,
+              f"{path.name} 出现未预期方案：{raw_name}")
+        if raw_name not in EXPECTED_SCHEMES:
+            continue
 
-        check(data["schemeNameRaw"] not in base_schemes,
-              f"schemeNameRaw 与本体重名：{data['schemeNameRaw']}")
+        expected = EXPECTED_SCHEMES[raw_name]
+        check(raw_name not in base_schemes,
+              f"schemeNameRaw 与本体重名：{raw_name}")
+        check(raw_name not in mod_schemes,
+              f"Mod 方案名重复：{raw_name}")
         check(isinstance(data["sortKey"], int),
-              f"sortKey 应为整数，实际 {type(data['sortKey'])}")
-
-        max_base_key = max(s["sortKey"] for s in base_schemes.values())
+              f"{raw_name} 的 sortKey 应为整数")
+        check(data["sortKey"] == expected["sortKey"],
+              f"{raw_name} 的 sortKey 应为 {expected['sortKey']}")
         check(data["sortKey"] > max_base_key,
-              f"sortKey 应排在本体方案之后（>{max_base_key}），实际 {data['sortKey']}")
+              f"{raw_name} 应排在本体方案之后（>{max_base_key}）")
+        check(data["formatString"] == expected["formatString"],
+              f"{raw_name} 的 formatString 不正确：{data['formatString']!r}")
 
-        # 占位符集合必须与 formatParams 的键完全一致
-        import re
         placeholders = set(re.findall(r"\{(\w+)\}", data["formatString"]))
         params = {k: v for k, v in data["formatParams"].items()}
+        check(params == expected["formatParams"],
+              f"{raw_name} 的 formatParams 不正确：{params!r}")
         check(placeholders == set(params),
-              f"formatString 占位符 {sorted(placeholders)} 与 "
-              f"formatParams 键 {sorted(params)} 不一致")
+              f"{raw_name} 占位符 {sorted(placeholders)} 与参数键 "
+              f"{sorted(params)} 不一致")
         for key, comp in params.items():
-            check(comp in base_components,
-                  f"formatParams[{key!r}] 引用了不存在的组件 {comp!r}")
+            check(comp in all_components,
+                  f"{raw_name} 的 formatParams[{key!r}] 引用了不存在的组件 {comp!r}")
 
-        # 用真实组件名顺序渲染，确认顺序是 货物 - 首站 - 末站
-        fake = {"key1": "CARGO", "key2": "FIRST", "key3": "LAST"}
-        rendered = lua.globals()["__format"](data["formatString"], fake)
-        check(rendered == "CARGO - FIRST - LAST",
-              f"formatString 渲染顺序不对：{rendered!r}")
+        rendered = lua.globals()["__format"](
+            data["formatString"], expected["renderValues"]
+        )
+        check(rendered == expected["rendered"],
+              f"{raw_name} 的命名顺序不对：{rendered!r}")
+        mod_schemes[raw_name] = data
 
-        check(data["schemeNameTranslated"] == expected,
-              f"{lang} 显示名应为 {expected!r}，实际 {data['schemeNameTranslated']!r}")
-        print(f"   {lang}: {data['schemeNameTranslated']}")
+    check(set(mod_schemes) == set(EXPECTED_SCHEMES),
+          f"Mod 方案应为 {sorted(EXPECTED_SCHEMES)}，实际 {sorted(mod_schemes)}")
 
-    # 模拟 UI 的排序：sortKey 升序，同级按 schemeNameRaw
-    all_schemes = list(base_schemes.values())
-    mod_res, _ = eval_res(lua, mod_res_path.read_text(encoding="utf-8"),
-                          mod_res_path.name, {})
-    if mod_res:
-        all_schemes.append(mod_res["data"])
-    if all_schemes:
-        all_schemes.sort(key=lambda s: (s["sortKey"], s["schemeNameRaw"]))
-        order = " → ".join(s["schemeNameRaw"] for s in all_schemes)
-        check(all_schemes[-1]["schemeNameRaw"] == "cargo_firststop_laststop",
-              f"排序后新方案应在最后：{order}")
-        print(f"   排序：{order}")
+    for path in MOD_SCHEME_PATHS:
+        raw_name, err = eval_res(
+            lua, path.read_text(encoding="utf-8"), path.name, {}
+        )
+        if raw_name is None:
+            check(False, f"{path.name}: {err}")
+            continue
+        raw_name = raw_name["data"]["schemeNameRaw"]
+        expected_names = EXPECTED_SCHEMES[raw_name]["names"]
+        for lang, expected in expected_names.items():
+            tr = {}
+            try:
+                gt = gettext.translation(
+                    "base", localedir=str(game_dir / STRINGS_DIR), languages=[lang]
+                )
+                tr = {k: gt.gettext(k) for k in
+                      ("Cargo", "First Stop", "Last Stop", "Town")}
+            except FileNotFoundError:
+                pass
+
+            res, err = eval_res(
+                lua, path.read_text(encoding="utf-8"), path.name, tr
+            )
+            check(err is None, f"{path.name}（{lang}）: {err}")
+            if res is None:
+                continue
+            check(res["data"]["schemeNameTranslated"] == expected,
+                  f"{path.name}（{lang}）显示名应为 {expected!r}，"
+                  f"实际 {res['data']['schemeNameTranslated']!r}")
+            print(f"   {lang}: {res['data']['schemeNameTranslated']}")
+
+    all_schemes = list(base_schemes.values()) + list(mod_schemes.values())
+    all_schemes.sort(key=lambda s: (s["sortKey"], s["schemeNameRaw"]))
+    order = " → ".join(s["schemeNameRaw"] for s in all_schemes)
+    expected_order = (
+        "firststop_laststop → town_cargo → town_carrier → "
+        "cargo_firststop_laststop → firsttown_lasttown_intercity"
+    )
+    check(order == expected_order, f"方案排序不正确：{order}")
+    print(f"   排序：{order}")
 
 
 def main() -> int:
