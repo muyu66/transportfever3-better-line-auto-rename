@@ -1,12 +1,12 @@
 {
   "authors": [
     {
-      "name": "猪猪",
+      "name": "zhuzhu",
       "role": "CREATOR"
     }
   ],
   "description": "1. 提供更好的线路自动重命名方案。2. 车站窗口中的终点站线路按线路名自然排序，并用柔和淡黄色高亮当前车站名称。Provide improved options for automatic line renaming. In the station window, sort terminal lines by line name using natural sorting, and highlight the current station name in a soft, pale yellow.",
-  "name": "更好的线路自动重命名与车站增强 / Better Line Auto Rename & Station Enhanced",
+  "name": "更好的线路自动重命名与车站增强",
   "summary": "更好用的线路自动重命名方案，并增强车站终点站的线路排序和淡黄色名称高亮。",
   "tags": ["Script Mod"],
   "url": "https://github.com/muyu66"
