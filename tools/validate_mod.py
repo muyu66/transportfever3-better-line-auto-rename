@@ -8,7 +8,7 @@
 2. 资源语义：用 lupa 嵌入真实 Lua 运行时执行 mod 的 .res.lua，
    再读取游戏本体 gui.zip 里的 3 个方案和 5 个组件做对照 ——
    检查类型、占位符、组件引用、sortKey，并用本体的 .mo 翻译表
-   把「货物 - 首个停靠点 - 末个停靠点」真正渲染一遍。
+   把每个自动命名方案真正渲染一遍。
 3. 车站窗口：检查线路名排序、当前节点名称传递和高亮渲染代码，
    并与本地原版参考文件对照，避免覆盖时意外删掉大段原逻辑。
 
@@ -47,13 +47,7 @@ STATION_GROUP_TL = (
 )
 MOD_SCHEME_PATHS = (
     MOD_DIR / "content" / "scheme_cargo_firststop_laststop.res.lua",
-    MOD_DIR / "content" / "scheme_firsttown_lasttown_intercity.res.lua",
-)
-MOD_COMPONENT_PATHS = (
-    MOD_DIR / "content" / "scheme_component_firsttown.res.lua",
-    MOD_DIR / "content" / "scheme_component_firsttown.script.tl",
-    MOD_DIR / "content" / "scheme_component_lasttown.res.lua",
-    MOD_DIR / "content" / "scheme_component_lasttown.script.tl",
+    MOD_DIR / "content" / "scheme_firststop_laststop_intercity.res.lua",
 )
 
 DEFAULT_GAME_DIR = Path(r"C:\Game\Steam\steamapps\common\Transport Fever 3")
@@ -82,16 +76,16 @@ EXPECTED_SCHEMES = {
         "rendered": "CARGO - FIRST - LAST",
         "sortKey": 23,
     },
-    "firsttown_lasttown_intercity": {
+    "firststop_laststop_intercity": {
         "names": {
-            "en": "首站城市 - 末站城市 - 城际",
-            "zh_CN": "首站城市 - 末站城市 - 城际",
-            "zh_TW": "首站城市 - 末站城市 - 城际",
+            "en": "First Stop - Last Stop - 城际",
+            "zh_CN": "首个停靠点 - 末个停靠点 - 城际",
+            "zh_TW": "首站 - 末站 - 城际",
         },
         "formatString": "{key1} - {key2} - 城际",
         "formatParams": {
-            "key1": "firsttown",
-            "key2": "lasttown",
+            "key1": "firststop",
+            "key2": "laststop",
         },
         "renderValues": {
             "key1": "FIRST",
@@ -148,10 +142,7 @@ def check_files() -> None:
         unlisted = sorted(on_disk - listed)
         check(not missing, f"_content.json 列了不存在的文件：{missing}")
         check(not unlisted, f"content 下有文件没进 _content.json：{unlisted}")
-        required_files = {
-            path.name
-            for path in MOD_SCHEME_PATHS + MOD_COMPONENT_PATHS
-        } | {
+        required_files = {path.name for path in MOD_SCHEME_PATHS} | {
             "station_group_enhanced.script.tl",
             "station_group_enhanced.res.lua",
             "station_group_enhanced.tl",
@@ -315,62 +306,12 @@ def check_semantics(game_dir: Path) -> None:
     check(len(base_schemes) == 3, f"本体方案应为 3 个，实际 {len(base_schemes)}")
     check(len(base_components) == 5, f"本体组件应为 5 个，实际 {len(base_components)}")
 
-    missing = [str(path) for path in MOD_SCHEME_PATHS + MOD_COMPONENT_PATHS
-               if not path.is_file()]
+    missing = [str(path) for path in MOD_SCHEME_PATHS if not path.is_file()]
     check(not missing, f"缺少自动重命名文件：{missing}")
     if missing:
         return
 
-    mod_components = {}
-    for path in MOD_COMPONENT_PATHS:
-        if path.suffix != ".lua":
-            continue
-        res, err = eval_res(lua, path.read_text(encoding="utf-8"), path.name, {})
-        check(err is None, f"{path.name}: {err}")
-        if res is None:
-            continue
-        check(res["type"] == "rename_scheme_component",
-              f"{path.name} 的 type 应为 rename_scheme_component")
-        data = res["data"]
-        raw_name = data["schemeComponentNameRaw"]
-        check(raw_name not in base_components,
-              f"组件名与本体冲突：{raw_name}")
-        check(raw_name not in mod_components,
-              f"Mod 组件名重复：{raw_name}")
-        mod_components[raw_name] = data
-        referenced_script = data["renameFnDefinition"]["fileName"].split("@", 1)[0]
-        script_path = path.parent / referenced_script
-        check(script_path.is_file() or (path.parent / f"{referenced_script}.tl").is_file(),
-              f"{path.name} 引用了不存在的脚本：{referenced_script}")
-
-    check(set(mod_components) == {"firsttown", "lasttown"},
-          f"Mod 端点城市组件应为 firsttown/lasttown，实际 {sorted(mod_components)}")
-
-    first_script = MOD_DIR / "content" / "scheme_component_firsttown.script.tl"
-    last_script = MOD_DIR / "content" / "scheme_component_lasttown.script.tl"
-    first_source = first_script.read_text(encoding="utf-8")
-    last_source = last_script.read_text(encoding="utf-8")
-    endpoint_snippets = {
-        first_script: (
-            "via.stop.stationGroup",
-            "stationGroup.stations[stationIndex1]",
-            "stationSystem.getTown(stationEntity)",
-            "getEntityName(townEntity)",
-        ),
-        last_script: (
-            "via.stop.stationGroup",
-            "stationGroup.stations[stationIndex1]",
-            "stationSystem.getTown(stationEntity)",
-            "lastTownName = townName",
-        ),
-    }
-    for path, snippets in endpoint_snippets.items():
-        source = path.read_text(encoding="utf-8")
-        for snippet in snippets:
-            check(snippet in source,
-                  f"{path.name} 缺少端点城市关键代码：{snippet}")
-
-    all_components = set(base_components) | set(mod_components)
+    all_components = set(base_components)
     max_base_key = max(s["sortKey"] for s in base_schemes.values())
     mod_schemes = {}
 
@@ -440,7 +381,7 @@ def check_semantics(game_dir: Path) -> None:
                     "base", localedir=str(game_dir / STRINGS_DIR), languages=[lang]
                 )
                 tr = {k: gt.gettext(k) for k in
-                      ("Cargo", "First Stop", "Last Stop", "Town")}
+                      ("Cargo", "First Stop", "Last Stop")}
             except FileNotFoundError:
                 pass
 
@@ -460,7 +401,7 @@ def check_semantics(game_dir: Path) -> None:
     order = " → ".join(s["schemeNameRaw"] for s in all_schemes)
     expected_order = (
         "firststop_laststop → town_cargo → town_carrier → "
-        "cargo_firststop_laststop → firsttown_lasttown_intercity"
+        "cargo_firststop_laststop → firststop_laststop_intercity"
     )
     check(order == expected_order, f"方案排序不正确：{order}")
     print(f"   排序：{order}")

@@ -4,7 +4,7 @@
 
 本项目提供两个相对独立的功能：
 
-1. 为线路自动重命名增加两个方案：**货物 - 首个停靠点 - 末个停靠点**、**首站城市 - 末站城市 - 城际**。
+1. 为线路自动重命名增加两个方案：**货物 - 首个停靠点 - 末个停靠点**、**首个停靠点 - 末个停靠点 - 城际**。
 2. 车站窗口中的终点站线路按线路名自然排序，并用柔和淡黄色高亮当前车站名称。
 
 > Mod ID：`better_line_auto_rename`
@@ -18,16 +18,16 @@
 | 方案                           | 资源名                           |
 | ------------------------------ | -------------------------------- |
 | 货物 - 首个停靠点 - 末个停靠点 | `cargo_firststop_laststop`       |
-| 首站城市 - 末站城市 - 城际     | `firsttown_lasttown_intercity`   |
+| 首个停靠点 - 末个停靠点 - 城际 | `firststop_laststop_intercity`   |
 
 示例结果：
 
 ```text
 谷物, 木材 - 北京中央车站 - 上海北站
-北京 - 上海 - 城际
+北京中央车站 - 上海北站 - 城际
 ```
 
-第一个方案复用游戏自带的 `cargo`、`firststop`、`laststop` 组件。第二个方案使用本 Mod 的 `firsttown`、`lasttown` 组件，分别读取线路首站和末站所属城市的名称，并在末尾附加固定的「城际」。
+两个方案都复用游戏自带的组件。第一个方案使用 `cargo`、`firststop`、`laststop`；第二个方案使用 `firststop`、`laststop`，输出线路首尾停靠站名称，并在末尾附加固定的「城际」。
 
 游戏本体可直接复用的组件只有 `town`、`firststop`、`laststop`、`cargo`、`carrier`。其中 `town` 输出线路上出现次数最多的城市，不是首站或末站城市。
 
@@ -64,12 +64,8 @@ staging_area/
     ├── _metadata/
     │   └── modinfo.json
     └── content/
-        ├── scheme_component_firsttown.res.lua
-        ├── scheme_component_firsttown.script.tl
-        ├── scheme_component_lasttown.res.lua
-        ├── scheme_component_lasttown.script.tl
         ├── scheme_cargo_firststop_laststop.res.lua
-        ├── scheme_firsttown_lasttown_intercity.res.lua
+        ├── scheme_firststop_laststop_intercity.res.lua
         ├── station_group_enhanced.res.lua
         ├── station_group_enhanced.script.tl
         └── station_group_enhanced.tl
@@ -87,7 +83,7 @@ staging_area/
 
 ```text
 货物 - 首个停靠点 - 末个停靠点
-首站城市 - 末站城市 - 城际
+首个停靠点 - 末个停靠点 - 城际
 ```
 
 ### 车站列表

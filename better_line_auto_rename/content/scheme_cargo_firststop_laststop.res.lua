@@ -14,8 +14,8 @@
 	    cargo      —— 线路上运量最大的货物（最多列 3 种）
 	    firststop  —— 第一个停靠站
 	    laststop   —— 最后一个停靠站
-	另一个「首站城市 - 末站城市 - 城际」方案使用独立的
-	scheme_firsttown_lasttown_intercity.res.lua。一个 .res.lua 的 data()
+	另一个「首个停靠点 - 末个停靠点 - 城际」方案使用独立的
+	scheme_firststop_laststop_intercity.res.lua。一个 .res.lua 的 data()
 	只能返回一个资源，因此不能把两个 rename_scheme 放在同一次返回值中。
 	formatString / formatParams 的写法和本体方案完全一致。
 

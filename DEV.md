@@ -24,12 +24,8 @@ better_line_auto_rename/
 ├── _metadata/
 │   └── modinfo.json
 └── content/
-    ├── scheme_component_firsttown.res.lua
-    ├── scheme_component_firsttown.script.tl
-    ├── scheme_component_lasttown.res.lua
-    ├── scheme_component_lasttown.script.tl
     ├── scheme_cargo_firststop_laststop.res.lua
-    ├── scheme_firsttown_lasttown_intercity.res.lua
+    ├── scheme_firststop_laststop_intercity.res.lua
     ├── station_group_enhanced.res.lua
     ├── station_group_enhanced.script.tl
     └── station_group_enhanced.tl
@@ -98,19 +94,17 @@ stationGroup.stations[via.stop.station1]
 
 资源名固定为 `cargo_firststop_laststop`，`sortKey` 必须大于原版三个方案，当前为 `23`。
 
-第二个方案由独立的 `scheme_firsttown_lasttown_intercity.res.lua` 定义，
-并使用本 Mod 新增的 `firsttown`、`lasttown` 组件：
+第二个方案由独立的 `scheme_firststop_laststop_intercity.res.lua` 定义，
+复用游戏自带的 `firststop`、`laststop` 组件：
 
 ```text
-{firsttown} - {lasttown} - 城际
+{firststop} - {laststop} - 城际
 ```
 
-两个端点组件按 `reactLine.path` 的顺序查找第一个和最后一个非途经点，
-再通过该停靠点实际选择的 `station1` 找到所属城市。`sortKey` 为 `24`。
+两个组件分别输出线路第一个和最后一个非途经点车站的名称。`sortKey` 为 `24`。
 
-一个 `.res.lua` 的 `data()` 只能返回一个资源，因此不能把两个
-`rename_scheme` 放进同一个文件；它们必须各有一个资源文件。组件脚本则可以
-独立引用，因此会自动加入 `rename_scheme_component` 资源列表。
+一个 `.res.lua` 的 `data()` 只能返回一个资源，因此不能把多个
+`rename_scheme` 放进同一个文件；它们必须各有一个资源文件。
 
 ## 4. 功能二与三：车站窗口增强
 
