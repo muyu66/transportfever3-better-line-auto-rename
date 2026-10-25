@@ -1,0 +1,8 @@
+{
+    "archives": null,
+    "files": [
+        "auto_apply_on_arrive_at_stop.gs.lua",
+        "auto_apply_on_arrive_at_stop.script.tl",
+        "scheme_cargo_firststop_laststop.res.lua"
+    ]
+}

@@ -1,0 +1,13 @@
+{
+  "authors": [
+    {
+      "name": "zhuzhu",
+      "role": "CREATOR"
+    }
+  ],
+  "description": "# 更好的线路概览\n\n### 功能介绍\n\n- 在原有设施面板中新增“线路”区域。\n- 整合所有终点站的线路。\n- 高亮线路名称中的当前设施名称，方便一眼看清线路运行脉络。\n- 使用与全局线路管理器一致的自然排序方式，让线路信息更加清晰有序。\n\n### 版权声明\n\n这是非官方社区项目，附带 MIT 开源许可证。我们与 Urban Games 无隶属关系。《Transport Fever 3》及其原始资源归其权利人所有。\n\n### 需要帮助？/ Need Help?\n\n在这里联系我：<https://space.bilibili.com/57509816>\n\n# Better Line Summary\n\n### Features\n\n- Adds a new Lines section to the existing facility panel.\n- Consolidates the lines serving all terminal stops.\n- Highlights the current facility name within each line name, making the operational network easy to understand at a glance.\n- Uses the same natural sorting as the global line manager, making line information clearer and easier to scan.\n\n---\n\n### Copyright Notice\n\nThis is an unofficial community project distributed under the MIT open-source license. We are not affiliated with Urban Games. Transport Fever 3 and its original assets are the property of their respective rights holders.\n\n### Need Help?\n\nContact me on Bilibili: <https://space.bilibili.com/57509816>",
+  "name": "Better Line Summary",
+  "summary": "Better Line Summary",
+  "tags": ["Script Mod"],
+  "url": "https://space.bilibili.com/57509816"
+}

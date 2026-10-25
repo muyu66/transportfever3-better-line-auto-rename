@@ -1,257 +1,136 @@
-# Better Line Auto Rename 开发文档
+# Transport Fever 3 Mods 开发文档
 
-## 1. 项目目标
-
-本项目为《Transport Fever 3》增加：
-
-- 两个线路自动重命名方案；
-- 车站终点站列表的名称排序与当前车站名称高亮。
-
-Mod ID 与 Mod 根目录名固定为：
+## 1. 三个独立包
 
 ```text
-better_line_auto_rename
+better_line_summary/
+better_rename_strategy_manual/
+better_rename_strategy_auto_apply/
 ```
 
-`mod.json` 中的 `modId`、Mod 根目录名和 Mod 资源 URI 前缀必须保持一致。
+每个目录都有独立的 `mod.json`、`_content.json`、`_metadata/` 和 `content/`。
+目录名、`modId` 与 Mod 资源 URI 前缀必须一致。
 
-## 2. 目录结构
+## 2. 重命名方案
+
+两个重命名 Mod 包含相同的资源：
+
+- `scheme_cargo_firststop_laststop.res.lua`
+
+方案复用游戏自带的 `cargo`、`firststop`、`laststop` 组件。
+两个包使用相同的原始资源名，因此不能同时启用。
+验证器会检查两个包中的方案文件完全一致。
+
+## 3. 手动版
+
+`better_rename_strategy_manual` 只包含方案资源，不包含 GameScript，
+也不修改任何 GUI。
+
+## 4. 自动应用版
+
+`better_rename_strategy_auto_apply` 同时包含方案资源和：
 
 ```text
-better_line_auto_rename/
-├── mod.json
-├── _content.json
-├── _metadata/
-│   └── modinfo.json
-└── content/
-    ├── scheme_cargo_firststop_laststop.res.lua
-    ├── scheme_firststop_laststop_intercity.res.lua
-    ├── station_group_enhanced.res.lua
-    ├── station_group_enhanced.script.tl
-    └── station_group_enhanced.tl
+content/auto_apply_on_arrive_at_stop.gs.lua
+content/auto_apply_on_arrive_at_stop.script.tl
 ```
 
-`content/` 直接映射为 Mod 资源根。只有游戏要求固定层级的文件才需要继续增加目录。
+`.gs.lua` 注册 `updateScript` 和 `handleEventScript`。队列存放在 GameScript
+状态中，因此可以跨 `handleEvent` 与 `update` 的回调环境共享。
 
-## 3. 功能一：自动重命名方案
+### 4.1 初始化
 
-### 3.1 游戏机制
-
-`manager_window.tl` 通过以下接口读取所有自动重命名方案：
+新游戏、地图游戏、任务、教程或旧存档迁移初始化时：
 
 ```lua
-api.res.genericRep.getAllOfType("rename_scheme")
+state:subscribeToEvent("OnArriveAtStop")
 ```
 
-方案资源包含：
+首次运行或从旧版状态迁移时，扫描一次当前玩家的已有线路：
 
-- `schemeNameRaw`：稳定资源名；
-- `schemeNameTranslated`：按钮显示名；
-- `sortKey`：方案顺序；
-- `formatString`：最终名称格式；
-- `formatParams`：引用的组件资源。
+- 非星号线路建立路径签名，并将需要更新的名字加入状态队列；
+- 星号线路不建立签名，便于删除星号后在下一次到站时重新启用；
+- 迁移完成后状态版本更新为 5，后续加载不会再次全局改名。
 
-### 3.2 本项目的实现
+之后从存档恢复时保留已存签名，并清理已删除线路。
 
-自动重命名组件的输入参数只有两个：
+### 4.2 事件处理
+
+只处理：
 
 ```lua
-renameParams.lineEntity
-renameParams.reactLine
+id == "TransportVehicleSystem"
+name == "OnArriveAtStop"
 ```
 
-`reactLine.path` 包含按顺序排列的车站和途经点。每个非途经点通过
-`via.stop.stationGroup` 指向车站组，`via.stop.station1` 是所选车站在组内的
-1-based 下标。城市实体可用以下链路取得：
+`ArriveAtStop` 直接提供 `lineEntity`，因此不遍历线路列表。
+
+路径签名包含：
+
+- 停靠站组、站点编号和终端编号；
+- 途经点 tag；
+- 途经点 edge ID 或位置。
+
+签名变化时才读取 `cargo_firststop_laststop` 方案，并将改名任务加入局部队列。
+`update` 在安全阶段每轮最多提交 10 条
+`api.cmd.makeEntitySetNameCmd()`；队列为空时立即返回，不扫描线路。
+路径未变化时不会覆盖后来手动设置的名称。
+
+线路名称去除尾部空格后若以 `*` 结尾，则跳过自动修改，并且不更新路径签名。
+删除该星号后，车辆下一次到站会重新检查并应用自动名称。
+
+## 5. 更好的线路概览
+
+`better_line_summary` 使用资源类型：
 
 ```lua
-stationGroup.stations[via.stop.station1]
-    -> api.engine.system.stationSystem.getTown(station)
-    -> api.engine.util.getEntityName(town)
+type = "react-plugin ::StationGroupEowExtensionPoint"
 ```
 
-游戏本体已有的组件如下：
+插件通过官方 `StationGroupEowExtensionPoint` 在车站窗口中原有内容之后新增独立卡片，
+不调用 `api.ReplaceRecipe()`，也不复制 `station_group.tl`。
 
-| 组件        | 输出                                             |
-| ----------- | ------------------------------------------------ |
-| `firststop` | 第一个非途经点车站的站名                         |
-| `laststop`  | 最后一个非途经点车站的站名                       |
-| `town`      | 线路上出现次数最多的城市名，不是首站/末站城市    |
-| `cargo`     | 停靠站数最多的最多 3 种货物，超过时附加 `+N`     |
-| `carrier`   | 线路车辆与车站共同使用的承运方式                 |
+插件使用 `api.engine.system.lineSystem.getLineStops(entityId)` 收集当前设施相关线路，
+去重后按 `lang_util.compareStrings()` 自然排序。线路名称中的当前设施名称使用
+`#FFE68C` 高亮，点击线路可打开线路窗口。
 
-`scheme_cargo_firststop_laststop.res.lua` 复用游戏自带的：
+原版终点站列表保持原顺序和原始文本。
 
-- `cargo`
-- `firststop`
-- `laststop`
-
-输出顺序为：
-
-```text
-{cargo} - {firststop} - {laststop}
-```
-
-资源名固定为 `cargo_firststop_laststop`，`sortKey` 必须大于原版三个方案，当前为 `23`。
-
-第二个方案由独立的 `scheme_firststop_laststop_intercity.res.lua` 定义，
-复用游戏自带的 `firststop`、`laststop` 组件：
-
-```text
-{firststop} - {laststop} - 城际
-```
-
-两个组件分别输出线路第一个和最后一个非途经点车站的名称。`sortKey` 为 `24`。
-
-一个 `.res.lua` 的 `data()` 只能返回一个资源，因此不能把多个
-`rename_scheme` 放进同一个文件；它们必须各有一个资源文件。
-
-## 4. 功能二与三：车站窗口增强
-
-### 4.1 为什么不直接放同名 `station_group.tl`
-
-TF3 不会用 Mod `content/` 中的同名 `.tl` 自动替换 GUI 源码。直接放同路径文件会被忽略，而且不会产生明显错误。
-
-正确方式是使用 `react-replacement-config`，在 React 初始化时显式替换目标 recipe。
-
-### 4.2 替换链路
-
-`station_group_enhanced.res.lua`：
-
-```lua
-type = "react-replacement-config"
-filePath = "better_line_auto_rename::/station_group_enhanced.script"
-doReplaceFn = "doReplaceFn"
-```
-
-`station_group_enhanced.script.tl`：
-
-1. 引用原版 `StationGroupWindowContent`；
-2. 引用本 Mod 的增强版本；
-3. 通过 `api.ReplaceRecipe(original, replacement)` 完成替换。
-
-Mod 自定义脚本路径必须带 Mod ID 前缀：
-
-```text
-better_line_auto_rename::/station_group_enhanced.script
-```
-
-### 4.3 为什么需要复制完整窗口文件
-
-终点站列表的排序和文本节点都由 `station_group.tl` 内部的局部 recipe 创建，游戏没有提供只修改该列表的公开回调。
-
-因此 `station_group_enhanced.tl` 是基于当前游戏版本的完整副本，但做了两项隔离处理：
-
-1. 所有 `ug_require` 使用 `::/` 绝对路径；
-2. 所有内部 React recipe 使用 `BetterAutoRename` 唯一前缀，避免与原版 recipe 冲突。
-
-### 4.4 排序
-
-`TerminalStops` 不再依赖实体 ID 顺序，而是先收集线路实体：
-
-```lua
-table.sort(sortedLineEntities, function(a, b)
-    return lang_util.compareStrings(nameA, nameB) < 0
-end)
-```
-
-这与全局线路管理器的自然名称排序一致，例如 `Line 2` 会排在 `Line 10` 前。
-
-### 4.5 当前车站名称高亮
-
-当前车站名称来自：
-
-```lua
-api.engine.util.getEntityName(stationGroupEntityId)
-```
-
-显示名会被拆分为普通文本和匹配文本。匹配部分使用：
-
-```lua
-api.type.Vec4f.new(1.0, 0.90, 0.55, 1.0)
-```
-
-即 `#FFE68C` 淡黄色。选择该颜色的原因是：
-
-- 与普通白色文本有明确区分；
-- 比游戏金色 `Highlight` 更柔和；
-- 在深色车站面板上保持足够对比度。
-
-高亮只影响显示，不修改线路实体。
-
-## 5. 本地开发
-
-### 5.1 依赖
-
-- Python 3.10+
-- `lupa`
-
-安装：
+## 6. 本地验证
 
 ```bash
 python -m pip install -r requirements-dev.txt
+python -B tools/validate_mods.py
 ```
 
-### 5.2 静态检查
+验证器检查：
 
-```bash
-python tools/validate_mod.py
-```
+- 三个包的目录、`modId`、清单、元数据和封面；
+- 手动版与自动版的命名方案完全一致；
+- 自动版不存在 tick 轮询或重复线路扫描；
+- 自动版确实订阅 `OnArriveAtStop`，并通过状态队列和有界 `update` 提交命令；
+- 线路概览版只使用官方扩展点，不包含 Recipe 替换或原版窗口副本；
+- 线路概览版同时包含自然排序、重复名称高亮和线路点击跳转。
 
-默认游戏路径：
+## 7. 安装与游戏校验
+
+将需要的 Mod 根目录复制到：
 
 ```text
-C:\Game\Steam\steamapps\common\Transport Fever 3
+<Steam>/userdata/<steamid>/xxxxxxx/local/staging_area/
 ```
 
-可通过 `--game-dir` 覆盖。找不到游戏目录时，脚本仍会执行文件结构和 Mod 自身的静态检查。
-
-### 5.3 本地安装
-
-将整个 `better_line_auto_rename/` 放入：
-
-```text
-<Steam>/userdata/<steamid>/xxxxxx/local/staging_area/
+```powershell
+"<TF3>\TransportFever3.exe" --validate StagingArea,better_line_summary out.json
+"<TF3>\TransportFever3.exe" --validate StagingArea,better_rename_strategy_manual out.json
+"<TF3>\TransportFever3.exe" --validate StagingArea,better_rename_strategy_auto_apply out.json
 ```
 
 修改 `.tl`、`.res.lua` 或 `_content.json` 后必须完全重启游戏。
 
-### 5.4 游戏内置校验
+## 8. 发布
 
-```powershell
-"<TF3>\TransportFever3.exe" --validate StagingArea,better_line_auto_rename out.json
-```
-
-游戏日志和错误信息位于：
-
-```text
-<Steam>/userdata/<steamid>/xxxxxx/local/crash_dump/
-```
-
-## 6. 发布流程
-
-1. 更新 `mod.json` 的 `revision`，每次发布只增不减。
-2. 更新 `_metadata/modinfo.json` 和 `CHANGELOG.md`。
-3. 运行 `python tools/validate_mod.py`。
-4. 在游戏中测试自动重命名方案、线路排序和高亮。
-
-## 7. 兼容性说明
-
-- 自动重命名方案是独立资源，通常可与其他方案 Mod 共存。
-- 车站窗口通过 recipe replacement 修改，若其他 Mod 也替换 `StationGroupWindowContent`，两者可能互相覆盖。
-- 不要同时使用多个基于不同原版窗口版本的车站 UI replacement Mod。
-
-## 8. 重命名 Mod ID
-
-若必须更改 Mod ID，需要同步修改：
-
-```text
-better_line_auto_rename/ 目录名
-mod.json                  modId
-content/station_group_enhanced.res.lua   filePath
-content/station_group_enhanced.script.tl replacement require
-tools/validate_mod.py     MOD_DIR / MOD_ID / 路径断言
-README.md 与 DEV.md
-```
-
-没有完整同步这些位置会导致 `Resource not found`。
+1. 更新目标 Mod 的 `mod.json` 的 `revision`，只增不减。
+2. 更新 `_metadata/modinfo.json`。
+3. 运行 `python -B tools/validate_mods.py`。
+4. 在游戏中分别测试启用组合和存档兼容。

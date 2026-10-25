@@ -1,0 +1,37 @@
+更好的线路概览 / Better Line Summary
+
+在原有设施面板中新增一个清晰、易读的线路区域，用于快速了解当前设施的线路运行脉络。
+
+中文
+
+功能介绍
+
+- 在原有设施面板中新增“线路”区域。
+- 整合所有终点站的线路。
+- 高亮线路名称中的当前设施名称，方便一眼看清线路运行脉络。
+- 使用与全局线路管理器一致的自然排序方式，让线路信息更加清晰有序。
+
+新区域不会替换原版车站窗口，也不会修改原版终点站列表；它通过官方扩展点添加独立内容，降低与其他 Mod 发生冲突的可能性。
+
+版权声明
+
+这是非官方社区项目，附带 MIT 开源许可证。我们与 Urban Games 无隶属关系。《Transport Fever 3》及其原始资源归其权利人所有。
+
+English
+
+Features
+
+- Adds a new Lines section to the existing facility panel.
+- Consolidates the lines serving all terminal stops.
+- Highlights the current facility name within each line name, making the operational network easy to understand at a glance.
+- Uses the same natural sorting as the global line manager, making line information clearer and easier to scan.
+
+The new section does not replace the original station window or modify the original terminal stop list. It is added through an official extension point, reducing the chance of conflicts with other mods.
+
+Copyright Notice
+
+This is an unofficial community project distributed under the MIT open-source license. We are not affiliated with Urban Games. Transport Fever 3 and its original assets are the property of their respective rights holders.
+
+需要帮助？/ Need Help?
+
+Bilibili: https://space.bilibili.com/57509816

@@ -1,0 +1,13 @@
+{
+  "authors": [
+    {
+      "name": "zhuzhu",
+      "role": "CREATOR"
+    }
+  ],
+  "description": "增加新的线路命名方案：货物 - 首个停靠点 - 末个停靠点。\n\nAdds the cargo, first stop, last stop line naming scheme for manual.",
+  "name": "Better Rename Strategy (Manual)",
+  "summary": "Better Rename Strategy (Manual)",
+  "tags": ["Script Mod"],
+  "url": "https://space.bilibili.com/57509816"
+}

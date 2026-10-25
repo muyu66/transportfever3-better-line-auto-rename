@@ -1,0 +1,13 @@
+{
+  "authors": [
+    {
+      "name": "zhuzhu",
+      "role": "CREATOR"
+    }
+  ],
+  "description": "更好的命名策略 (自动应用) / Better Rename Strategy (Auto-apply) 这个MOD具有激进性，会在加载存档之后慢慢地自动更新所有线路名称 (不用担心性能的问题，它是分批次进行的，几乎无感) 如果你不想使用激进的MOD，可以考虑使用手动版 Better Rename Strategy (Manual) 功能介绍：提供与手动版相同的线路命名方案。首次加载旧存档时为现有线路执行一次性追溯命名，之后在车辆到达线路站点且路径变化时自动更新；改名任务在后续更新阶段每轮最多应用10条。线路名称以星号（*）结尾时跳过自动修改。 工作原理：我们的触发机制与众不同，目前主流的方案应该是主动轮询式，但是我更喜欢基于事件驱动。所以我设计当车辆到达站点时，触发事件通知MOD，MOD再检测该线路是否被变更过，如果是新建或者被修改过的线路，则再去执行改名。这个功能比较复杂，且暂时没有获得官方的支持。我做的折中方案就是事件入队，延迟提交，以提升性能。 版权声明：这是非官方社区项目，附带 MIT 开源许可证。我们与 Urban Games 无隶属关系。《Transport Fever 3》及其原始资源归其权利人所有。 需要帮助？ Bilibili: https://space.bilibili.com/57509816",
+  "name": "Better Rename Strategy (Auto-apply)",
+  "summary": "Better Rename Strategy (Auto-apply)",
+  "tags": ["Script Mod"],
+  "url": "https://space.bilibili.com/57509816"
+}

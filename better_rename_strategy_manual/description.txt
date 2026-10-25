@@ -1,0 +1,34 @@
+更好的命名策略 (手动版) / Better Rename Strategy (Manual)
+
+注意
+Better Rename Strategy (Auto-apply) 是它的同策略自动命名版，注意它们俩只能二选一。
+
+功能介绍
+非常简单的MOD，仅增加新的线路命名方案：货物 - 首个停靠点 - 末个停靠点。
+
+工作原理
+基于游戏本体内置的方案进行组合，本方案不新增组件，直接复用本体已有的三个 rename_scheme_component。
+
+版权声明
+这是非官方社区项目，附带 MIT 开源许可证。我们与 Urban Games 无隶属关系。《Transport Fever 3》及其原始资源归其权利人所有。
+
+需要帮助？
+Bilibili: https://space.bilibili.com/57509816
+
+
+Better Rename Strategy (Manual)
+
+Note
+Better Rename Strategy (Auto-apply) is the auto-naming version of the same strategy—note that you can only choose one of the two.
+
+Feature Overview
+A very simple mod that only adds a new line naming scheme: Cargo - First Stop - Last Stop.
+
+How It Works
+It combines schemes built into the base game. This scheme does not add new components; it directly reuses the three existing rename_scheme_components in the base game.
+
+Copyright Notice
+This is an unofficial community project, distributed under the MIT open-source license. We are not affiliated with Urban Games. Transport Fever 3 and its original assets belong to their respective rights holders.
+
+Need Help?
+Bilibili: https://space.bilibili.com/57509816
