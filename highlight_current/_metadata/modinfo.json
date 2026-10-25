@@ -1,0 +1,13 @@
+{
+  "authors": [
+    {
+      "name": "zhuzhu",
+      "role": "CREATOR"
+    }
+  ],
+  "description": "在车站窗口的终点站线路列表中，用柔和淡黄色高亮当前车站名称。支持同一名称在线路名中多次出现。Highlight the current station name in terminal line listings using a soft, pale yellow, including every repeated occurrence.",
+  "name": "Highlight Current",
+  "summary": "高亮车站终点站线路列表中的当前车站名称。",
+  "tags": ["Script Mod"],
+  "url": "https://github.com/muyu66"
+}

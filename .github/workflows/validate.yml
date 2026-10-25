@@ -21,3 +21,6 @@ jobs:
 
       - name: Run validation
         run: python tools/validate_mod.py
+
+      - name: Validate highlight_current
+        run: python tools/validate_highlight_current.py
